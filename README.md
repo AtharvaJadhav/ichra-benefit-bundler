@@ -27,6 +27,7 @@ This project provides a full-stack solution for optimizing ICHRA (Individual Cov
 
 ## Features
 - Loads and processes large CMS PUF datasets (plan, rate, benefits, service area)
+- **In-memory caching:** CMS data is loaded once at server startup and reused for all API calls for high performance
 - Exposes a flexible `/api/optimize` endpoint for plan selection with rich constraints
 - Supports filtering by premium, deductible, actuarial value, metal level, plan type, HSA eligibility, and required benefits
 - In-memory caching and logging for performance
@@ -179,6 +180,7 @@ curl -X POST http://localhost:8000/api/optimize \
 
 ## Notes
 - Large CMS data files are **not tracked in git**. See `.gitignore` and `backend/data/README.md` for details.
+- **Performance:** CMS data is loaded once at server startup and cached in memory for all API calls. This makes optimization fast and efficient.
 - For fast testing, you can shrink CSVs to a few rows using `head -n 21 file.csv > file-small.csv`.
 - For production, restore full data and ensure all environment variables are set.
 - For any issues, check logs or open an issue.

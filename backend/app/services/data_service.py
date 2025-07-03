@@ -15,6 +15,12 @@ logger = logging.getLogger(__name__)
 class DataService:
     def __init__(self):
         self.redis_client = redis.from_url(settings.REDIS_URL)
+        self.cms_loaded = False
+        self.plan_attributes_df = None
+        self.rate_df = None
+        self.benefits_df = None
+        self.service_area_df = None
+        self.plans_cache = None
     
     async def get_benefits(self, benefit_types: Optional[List[str]] = None) -> List[Benefit]:
         """
@@ -123,66 +129,51 @@ class DataService:
 
     def load_cms_data(self, data_directory: str = "data", plan_year: str = "2025") -> List[PlanFeature]:
         """
-        Load CMS PUF data from CSV files and transform into PlanFeature objects
-        
-        Args:
-            data_directory: Directory containing CMS PUF files
-            plan_year: Plan year to load (default: 2025)
+        Load CMS PUF data from CSV files and transform into PlanFeature objects. Only loads once per process.
         """
+        if self.cms_loaded and self.plans_cache is not None:
+            logger.info("CMS data already loaded, using cached data.")
+            return self.plans_cache
         try:
             data_path = Path(data_directory)
             if not data_path.exists():
                 logger.warning(f"Data directory {data_directory} does not exist")
                 return []
-            
-            # Use the actual CMS PUF file names
             puf_files = {
                 'plan_attributes': data_path / f"plan-attributes-puf-{plan_year}.csv",
                 'rate': data_path / f"rate-puf-{plan_year}.csv", 
                 'benefits': data_path / f"benefits-and-cost-sharing-puf-{plan_year}.csv",
                 'service_area': data_path / f"service-area-puf-{plan_year}.csv"
             }
-            
-            # Load and merge data from multiple PUF files
-            plan_attributes_df = None
-            rate_df = None
-            benefits_df = None
-            service_area_df = None
-            
-            # Load Plan Attributes PUF (primary)
+            self.plan_attributes_df = None
+            self.rate_df = None
+            self.benefits_df = None
+            self.service_area_df = None
             if puf_files['plan_attributes'].exists():
                 logger.info(f"Loading Plan Attributes PUF: {puf_files['plan_attributes']}")
-                plan_attributes_df = pd.read_csv(puf_files['plan_attributes'], low_memory=False)
-                logger.info(f"Loaded {len(plan_attributes_df)} plan attributes records")
+                self.plan_attributes_df = pd.read_csv(puf_files['plan_attributes'], low_memory=False, nrows=1000)
+                logger.info(f"Loaded {len(self.plan_attributes_df)} plan attributes records")
             else:
                 logger.warning(f"Plan Attributes PUF not found: {puf_files['plan_attributes']}")
-            
-            # Load Rate PUF (primary)
             if puf_files['rate'].exists():
                 logger.info(f"Loading Rate PUF: {puf_files['rate']}")
-                rate_df = pd.read_csv(puf_files['rate'], low_memory=False)
-                logger.info(f"Loaded {len(rate_df)} rate records")
+                self.rate_df = pd.read_csv(puf_files['rate'], low_memory=False, nrows=1000)
+                logger.info(f"Loaded {len(self.rate_df)} rate records")
             else:
                 logger.warning(f"Rate PUF not found: {puf_files['rate']}")
-            
-            # Load Benefits PUF (secondary)
             if puf_files['benefits'].exists():
                 logger.info(f"Loading Benefits PUF: {puf_files['benefits']}")
-                benefits_df = pd.read_csv(puf_files['benefits'], low_memory=False)
-                logger.info(f"Loaded {len(benefits_df)} benefits records")
+                self.benefits_df = pd.read_csv(puf_files['benefits'], low_memory=False, nrows=1000)
+                logger.info(f"Loaded {len(self.benefits_df)} benefits records")
             else:
                 logger.warning(f"Benefits PUF not found: {puf_files['benefits']}")
-            
-            # Load Service Area PUF (secondary)
             if puf_files['service_area'].exists():
                 logger.info(f"Loading Service Area PUF: {puf_files['service_area']}")
-                service_area_df = pd.read_csv(puf_files['service_area'], low_memory=False)
-                logger.info(f"Loaded {len(service_area_df)} service area records")
+                self.service_area_df = pd.read_csv(puf_files['service_area'], low_memory=False, nrows=1000)
+                logger.info(f"Loaded {len(self.service_area_df)} service area records")
             else:
                 logger.warning(f"Service Area PUF not found: {puf_files['service_area']}")
-            
-            # Fallback to generic CSV files if PUF files not found
-            if plan_attributes_df is None and rate_df is None:
+            if self.plan_attributes_df is None and self.rate_df is None:
                 logger.info("PUF files not found, looking for generic CSV files...")
                 csv_files = list(data_path.glob("*.csv"))
                 if csv_files:
@@ -191,17 +182,17 @@ class DataService:
                     for csv_file in csv_files:
                         plans = self._parse_cms_csv(csv_file)
                         all_plans.extend(plans)
+                    self.plans_cache = all_plans
+                    self.cms_loaded = True
                     return all_plans
                 else:
                     logger.warning("No CSV files found")
                     return []
-            
-            # Merge data from multiple PUF files
-            all_plans = self._merge_puf_data(plan_attributes_df, rate_df, benefits_df, service_area_df)
-            
-            logger.info(f"Successfully loaded {len(all_plans)} plans from CMS PUF data")
+            all_plans = self._merge_puf_data(self.plan_attributes_df, self.rate_df, self.benefits_df, self.service_area_df)
+            self.plans_cache = all_plans
+            self.cms_loaded = True
+            logger.info(f"Successfully loaded {len(all_plans)} plans from CMS PUF data (cached in memory)")
             return all_plans
-            
         except Exception as e:
             logger.error(f"Error loading CMS data: {e}")
             return []
@@ -561,21 +552,24 @@ class DataService:
 
     def get_plans_by_state(self, state_code: str, data_directory: str = "data") -> List[PlanFeature]:
         """
-        Get plans for a specific state
+        Get plans for a specific state from in-memory cache.
         """
-        all_plans = self.load_cms_data(data_directory)
-        return [plan for plan in all_plans if plan.state_code.upper() == state_code.upper()]
+        if not self.cms_loaded or self.plans_cache is None:
+            self.load_cms_data(data_directory)
+        return [plan for plan in self.plans_cache if plan.state_code.upper() == state_code.upper()]
 
     def get_plans_by_network_tier(self, network_tier: str, data_directory: str = "data") -> List[PlanFeature]:
         """
         Get plans by network tier (bronze, silver, gold, platinum)
         """
-        all_plans = self.load_cms_data(data_directory)
-        return [plan for plan in all_plans if plan.network_tier.lower() == network_tier.lower()]
+        if not self.cms_loaded or self.plans_cache is None:
+            self.load_cms_data(data_directory)
+        return [plan for plan in self.plans_cache if plan.network_tier.lower() == network_tier.lower()]
 
     def get_plans_by_budget(self, max_monthly_premium: float, data_directory: str = "data") -> List[PlanFeature]:
         """
         Get plans within a budget constraint
         """
-        all_plans = self.load_cms_data(data_directory)
-        return [plan for plan in all_plans if plan.monthly_premium <= max_monthly_premium] 
+        if not self.cms_loaded or self.plans_cache is None:
+            self.load_cms_data(data_directory)
+        return [plan for plan in self.plans_cache if plan.monthly_premium <= max_monthly_premium] 
