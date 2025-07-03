@@ -63,4 +63,13 @@ dump.rdb
 
 # Test files
 test_*.py
-*_test.py 
+*_test.py
+
+# UI/Frontend
+ui/node_modules/
+ui/.env
+ui/.env.*
+ui/.next/
+ui/dist/
+ui/build/
+ui/.DS_Store 
