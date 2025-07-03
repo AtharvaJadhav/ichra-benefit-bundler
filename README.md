@@ -14,6 +14,7 @@ Optimize health plan selections for employees using CMS marketplace data.
 - [Testing](#testing)
 - [API Usage](#api-usage)
 - [Sample cURL](#sample-curl)
+- [Troubleshooting](#troubleshooting)
 - [Notes](#notes)
 
 ---
@@ -175,6 +176,37 @@ curl -X POST http://localhost:8000/api/optimize \
     "tobacco_preference": "No Preference"
   }'
 ```
+
+---
+
+## Troubleshooting
+
+### UI/Frontend
+- **Vite bad interpreter error:**
+  - Run:
+    ```sh
+    rm -rf node_modules package-lock.json
+    npm cache clean --force
+    npm install
+    npm run dev
+    ```
+- **TypeScript import errors:**
+  - Check for typos and case sensitivity in filenames and imports.
+  - Restart your dev server after adding new files.
+- **Screenshots:**
+  - Place images in a top-level `screenshots/` folder and reference them in your README.
+
+### Backend
+- **ModuleNotFoundError: No module named 'app':**
+  - Always run `uvicorn` from inside the `backend` directory:
+    ```sh
+    cd backend
+    uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+    ```
+- **CSV row limit for testing:**
+  - The backend loads a maximum of 1000 rows from each CMS CSV for fast development. Adjust `nrows` in `data_service.py` if needed.
+- **Address already in use:**
+  - Kill the process using the port or use a different port.
 
 ---
 

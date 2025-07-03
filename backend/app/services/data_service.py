@@ -151,25 +151,25 @@ class DataService:
             self.service_area_df = None
             if puf_files['plan_attributes'].exists():
                 logger.info(f"Loading Plan Attributes PUF: {puf_files['plan_attributes']}")
-                self.plan_attributes_df = pd.read_csv(puf_files['plan_attributes'], low_memory=False, nrows=1000)
+                self.plan_attributes_df = pd.read_csv(puf_files['plan_attributes'], low_memory=False, nrows=2500)
                 logger.info(f"Loaded {len(self.plan_attributes_df)} plan attributes records")
             else:
                 logger.warning(f"Plan Attributes PUF not found: {puf_files['plan_attributes']}")
             if puf_files['rate'].exists():
                 logger.info(f"Loading Rate PUF: {puf_files['rate']}")
-                self.rate_df = pd.read_csv(puf_files['rate'], low_memory=False, nrows=1000)
+                self.rate_df = pd.read_csv(puf_files['rate'], low_memory=False, nrows=2500)
                 logger.info(f"Loaded {len(self.rate_df)} rate records")
             else:
                 logger.warning(f"Rate PUF not found: {puf_files['rate']}")
             if puf_files['benefits'].exists():
                 logger.info(f"Loading Benefits PUF: {puf_files['benefits']}")
-                self.benefits_df = pd.read_csv(puf_files['benefits'], low_memory=False, nrows=1000)
+                self.benefits_df = pd.read_csv(puf_files['benefits'], low_memory=False, nrows=2500)
                 logger.info(f"Loaded {len(self.benefits_df)} benefits records")
             else:
                 logger.warning(f"Benefits PUF not found: {puf_files['benefits']}")
             if puf_files['service_area'].exists():
                 logger.info(f"Loading Service Area PUF: {puf_files['service_area']}")
-                self.service_area_df = pd.read_csv(puf_files['service_area'], low_memory=False, nrows=1000)
+                self.service_area_df = pd.read_csv(puf_files['service_area'], low_memory=False, nrows=2500)
                 logger.info(f"Loaded {len(self.service_area_df)} service area records")
             else:
                 logger.warning(f"Service Area PUF not found: {puf_files['service_area']}")
