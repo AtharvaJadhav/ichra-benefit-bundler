@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends, status
 from typing import List, Optional
-from app.models.schemas import BundleRequest, BundleResponse, Bundle, OptimizationRequest, BundleResult, PlanFeature
+from app.models.schemas import BundleRequest, BundleResponse, Bundle, OptimizationRequest, PlanFeature
+from app.models.domain import BundleResult
 from app.services.bundle_service import BundleService
 from app.services.data_service import DataService
 from app.optimization.bundler import BenefitBundler
