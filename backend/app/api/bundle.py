@@ -98,7 +98,39 @@ async def optimize_bundle(
         plans = data_service.get_plans_by_state(request.state_code)
         if not plans:
             raise HTTPException(status_code=404, detail=f"No plans found for state {request.state_code}")
-        result = bundler.optimize(request.employee_profile, plans)
+        # Filter plans based on all constraints
+        filtered_plans = []
+        for plan in plans:
+            if request.max_monthly_premium is not None and plan.monthly_premium > request.max_monthly_premium:
+                continue
+            if request.min_actuarial_value is not None and plan.actuarial_value < request.min_actuarial_value / 100.0:
+                continue
+            if request.preferred_metal_level and plan.metal_level.lower() != request.preferred_metal_level.lower():
+                continue
+            if request.preferred_plan_type and plan.plan_type.lower() != request.preferred_plan_type.lower():
+                continue
+            if request.max_deductible is not None and plan.deductible > request.max_deductible:
+                continue
+            if request.hsa_eligible_only and not plan.hsa_eligible:
+                continue
+            # Required benefits filtering (if provided)
+            if request.required_benefits:
+                # This requires access to the benefits CSV; for now, assume plan has a 'covered_benefits' attribute or skip
+                # If not available, skip this filter
+                if hasattr(plan, 'covered_benefits'):
+                    if not all(benefit in getattr(plan, 'covered_benefits', []) for benefit in request.required_benefits):
+                        continue
+            # Tobacco preference is not implemented in PlanFeature, so skip for now
+            filtered_plans.append(plan)
+        if not filtered_plans:
+            raise HTTPException(status_code=404, detail="No plans match the given constraints.")
+        # Build EmployeeProfile for optimizer
+        profile = EmployeeProfile(
+            age=request.age,
+            risk_score=request.risk_score,
+            budget_cap=request.budget_cap
+        )
+        result = bundler.optimize(profile, filtered_plans)
         return result
     except HTTPException:
         raise

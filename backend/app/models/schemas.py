@@ -3,7 +3,7 @@ from typing import List, Optional, Dict, Any
 from pydantic import BaseModel, Field
 from .domain import (
     BenefitType, CoverageLevel, BundleStatus, Benefit, Bundle, BundleRequest, BundleResponse,
-    MetalLevel, MarketCoverage, CMSPlanAttributes, CMSServiceArea, CMSRate, CMSBenefits, PlanFeature
+    MetalLevel, MarketCoverage, CMSPlanAttributes, CMSServiceArea, CMSRate, CMSBenefits, PlanFeature, EmployeeProfile
 )
 
 # Re-export domain models as schemas for API use
@@ -76,5 +76,15 @@ class PlanComparisonResponse(BaseModel):
     recommendations: List[str]
 
 class OptimizationRequest(BaseModel):
-    employee_profile: EmployeeProfile
-    state_code: str 
+    age: int
+    risk_score: float
+    budget_cap: float
+    state_code: str
+    max_monthly_premium: Optional[float] = None
+    min_actuarial_value: Optional[float] = None
+    preferred_metal_level: Optional[str] = None
+    preferred_plan_type: Optional[str] = None
+    max_deductible: Optional[float] = None
+    hsa_eligible_only: Optional[bool] = None
+    required_benefits: Optional[List[str]] = None
+    tobacco_preference: Optional[str] = None 
